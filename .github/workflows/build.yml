@@ -47,21 +47,21 @@ jobs:
       - name: Apply patches
         working-directory: source
         run: |
-          # Checkout our DTS and config files from this repo
-          git -C /home/runner/work/immortalwrt-x1pro/immortalwrt-x1pro checkout -f
           mkdir -p target/linux/mediatek/dts
-          cp /home/runner/work/immortalwrt-x1pro/immortalwrt-x1pro/*.dts* target/linux/mediatek/dts/ 2>/dev/null || true
+          cp /home/runner/work/immortalwrt-x1pro/immortalwrt-x1pro/mt7981b-oray-x1pro-v1.dtsi target/linux/mediatek/dts/
+          cp /home/runner/work/immortalwrt-x1pro/immortalwrt-x1pro/mt7981b-oray-x1pro-v1.dts target/linux/mediatek/dts/
+          cp /home/runner/work/immortalwrt-x1pro/immortalwrt-x1pro/mt7981b-oray-x1pro-v1-ubootmod.dts target/linux/mediatek/dts/
           cp /home/runner/work/immortalwrt-x1pro/immortalwrt-x1pro/filogic.mk target/linux/mediatek/image/
           cp /home/runner/work/immortalwrt-x1pro/immortalwrt-x1pro/feeds.conf.default .
 
-      - name: Configure
+      - name: Configure (ubootmod version)
         working-directory: source
         run: |
           cp defconfig/mt7981-ax3000.config .config
           sed -i "/CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_/d" .config
           sed -i "/CONFIG_TARGET_DEVICE_PACKAGES_mediatek_filogic_DEVICE_/d" .config
-          echo "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_oray_x1pro-v1=y" >> .config
-          echo "CONFIG_TARGET_DEVICE_PACKAGES_mediatek_filogic_DEVICE_oray_x1pro-v1=" >> .config
+          echo "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_oray_x1pro-v1-ubootmod=y" >> .config
+          echo "CONFIG_TARGET_DEVICE_PACKAGES_mediatek_filogic_DEVICE_oray_x1pro-v1-ubootmod=" >> .config
           cat >> .config << 'CONFIG_EOF'
 CONFIG_PACKAGE_luci-app-openclash=y
 CONFIG_PACKAGE_luci-app-store=y
@@ -113,6 +113,6 @@ CONFIG_EOF
       - name: Upload firmware
         uses: actions/upload-artifact@v4
         with:
-          name: immortalwrt-oray-x1pro
+          name: immortalwrt-oray-x1pro-ubootmod
           path: source/bin/targets/mediatek/filogic/
           retention-days: 30

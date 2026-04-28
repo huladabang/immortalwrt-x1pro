@@ -2640,3 +2640,20 @@ ifneq ($(CONFIG_TARGET_ROOTFS_INITRAMFS),)
 endif
 endef
 TARGET_DEVICES += wirelesstag_zx7981pd-ubootmod
+
+define Device/oray_x1pro-v1-ubootmod
+  DEVICE_VENDOR := Oray
+  DEVICE_MODEL := 蒲公英 X1Pro
+  DEVICE_VARIANT := v1 ubootmod
+  DEVICE_DTS := mt7981b-oray-x1pro-v1-ubootmod
+  DEVICE_DTS_DIR := ../dts
+  SUPPORTED_DEVICES += R47
+  UBINIZE_OPTS := -E 5
+  BLOCKSIZE := 128k
+  PAGESIZE := 2048
+  IMAGE_SIZE := 114688k
+  KERNEL_IN_UBI := 1
+  IMAGE/sysupgrade.bin := sysupgrade-tar | append-metadata
+  DEVICE_PACKAGES := kmod-usb3 kmod-mt7915e kmod-mt7981-firmware mt7981-wo-firmware automount
+endef
+TARGET_DEVICES += oray_x1pro-v1-ubootmod
