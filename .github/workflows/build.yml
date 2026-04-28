@@ -3,40 +3,46 @@ name: Build ImmortalWrt for Oray X1Pro
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
-      - master
+    branches: [ main, master ]
 
 jobs:
   build:
     runs-on: ubuntu-24.04
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Install build dependencies
+      - name: Install dependencies
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y build-essential gawk unzip file wget python3 python3-pip \
-            python3-setuptools python3-yaml rsync curl git libncurses-dev \
-            libssl-dev libelf-dev zlib1g-dev time rsync subversion gettext patch perl
+          sudo apt-get install -y build-essential gawk unzip file wget python3 \
+            python3-pip python3-setuptools python3-yaml rsync curl git \
+            libncurses-dev libssl-dev libelf-dev zlib1g-dev time rsync \
+            subversion gettext patch perl
 
-      - name: Clone ImmortalWrt source
-        run: |
-          git clone --depth=1 https://github.com/padavanonly/immortalwrt-mt798x-6.6 source
+      - name: Clone source
+        run: git clone --depth=1 https://github.com/padavanonly/immortalwrt-mt798x-6.6 source
 
-      - name: Restore caches
+      - name: Cache restore
         uses: actions/cache/restore@v4
-        id: cache-restore
         with:
           path: |
             source/dl
             source/staging_dir
           key: build-cache-${{ hashFiles('feeds.conf.default', '.github/workflows/build.yml') }}
-          restore-keys: |
-            build-cache-
+          restore-keys: build-cache-
 
-      - name: Update & install feeds
+      - name: Apply patches
+        working-directory: source
+        run: |
+          mkdir -p target/linux/mediatek/dts
+          GITHUB_WORKSPACE=${{ github.workspace }}
+          cp $GITHUB_WORKSPACE/mt7981b-oray-x1pro-v1.dtsi target/linux/mediatek/dts/
+          cp $GITHUB_WORKSPACE/mt7981b-oray-x1pro-v1.dts target/linux/mediatek/dts/
+          cp $GITHUB_WORKSPACE/mt7981b-oray-x1pro-v1-ubootmod.dts target/linux/mediatek/dts/
+          cp $GITHUB_WORKSPACE/filogic.mk target/linux/mediatek/image/
+          cp $GITHUB_WORKSPACE/feeds.conf.default .
+
+      - name: Update feeds
         working-directory: source
         run: |
           ./scripts/feeds update -a
@@ -44,16 +50,6 @@ jobs:
           ./scripts/feeds install -p istore luci-app-store
           ./scripts/feeds install luci-app-ttyd
           ./scripts/feeds install -a
-
-      - name: Apply patches
-        working-directory: source
-        run: |
-          mkdir -p target/linux/mediatek/dts
-          cp /home/runner/work/immortalwrt-x1pro/immortalwrt-x1pro/mt7981b-oray-x1pro-v1.dtsi target/linux/mediatek/dts/
-          cp /home/runner/work/immortalwrt-x1pro/immortalwrt-x1pro/mt7981b-oray-x1pro-v1.dts target/linux/mediatek/dts/
-          cp /home/runner/work/immortalwrt-x1pro/immortalwrt-x1pro/mt7981b-oray-x1pro-v1-ubootmod.dts target/linux/mediatek/dts/
-          cp /home/runner/work/immortalwrt-x1pro/immortalwrt-x1pro/filogic.mk target/linux/mediatek/image/
-          cp /home/runner/work/immortalwrt-x1pro/immortalwrt-x1pro/feeds.conf.default .
 
       - name: Configure
         working-directory: source
@@ -63,47 +59,30 @@ jobs:
           sed -i "/CONFIG_TARGET_DEVICE_PACKAGES_mediatek_filogic_DEVICE_/d" .config
           echo "CONFIG_TARGET_DEVICE_mediatek_filogic_DEVICE_oray_x1pro-v1-ubootmod=y" >> .config
           echo "CONFIG_TARGET_DEVICE_PACKAGES_mediatek_filogic_DEVICE_oray_x1pro-v1-ubootmod=" >> .config
-          cat >> .config << 'CONFIG_EOF'
-CONFIG_PACKAGE_luci-app-openclash=y
-CONFIG_PACKAGE_luci-app-store=y
-CONFIG_PACKAGE_luci-app-ttyd=y
-CONFIG_PACKAGE_kmod-usb-storage=y
-CONFIG_PACKAGE_kmod-usb-storage-uas=y
-CONFIG_PACKAGE_kmod-usb-net=y
-CONFIG_PACKAGE_kmod-usb-net-rndis=y
-CONFIG_PACKAGE_kmod-usb-net-cdc-ether=y
-CONFIG_PACKAGE_kmod-usb-net-cdc-subset=y
-CONFIG_PACKAGE_kmod-usb-net-cdc-eem=y
-CONFIG_PACKAGE_kmod-usb-net-cdc-ncm=y
-CONFIG_PACKAGE_kmod-usb-net-huawei-cdc-ncm=y
-CONFIG_PACKAGE_kmod-usb-net-ipheth=y
-CONFIG_PACKAGE_kmod-usb-net-sierrawireless=y
-CONFIG_PACKAGE_kmod-usb-net-qmi-wwan=y
-CONFIG_PACKAGE_kmod-usb-serial=y
-CONFIG_PACKAGE_kmod-usb-serial-option=y
-CONFIG_PACKAGE_kmod-usb-serial-wwan=y
-CONFIG_PACKAGE_kmod-usb-serial-qualcomm=y
-CONFIG_PACKAGE_kmod-usb-acm=y
-CONFIG_PACKAGE_kmod-usb-printer=y
-CONFIG_PACKAGE_kmod-usb-uhci=y
-CONFIG_PACKAGE_kmod-usb-ohci=y
-CONFIG_PACKAGE_kmod-usb2=y
-CONFIG_PACKAGE_kmod-usb3=y
-CONFIG_PACKAGE_usbutils=y
-CONFIG_PACKAGE_kmod-fs-exfat=y
-CONFIG_PACKAGE_kmod-fs-ext4=y
-CONFIG_PACKAGE_kmod-fs-ntfs3=y
-CONFIG_PACKAGE_kmod-fs-f2fs=y
-CONFIG_PACKAGE_e2fsprogs=y
-CONFIG_EOF
-          make defconfig
 
-      - name: Build firmware
+      - name: Add packages
         working-directory: source
         run: |
-          make -j$(nproc) V=s
+          for pkg in luci-app-openclash luci-app-store luci-app-ttyd \
+            kmod-usb-storage kmod-usb-storage-uas \
+            kmod-usb-net kmod-usb-net-rndis kmod-usb-net-cdc-ether \
+            kmod-usb-net-cdc-subset kmod-usb-net-cdc-eem kmod-usb-net-cdc-ncm \
+            kmod-usb-net-huawei-cdc-ncm kmod-usb-net-ipheth \
+            kmod-usb-net-sierrawireless kmod-usb-net-qmi-wwan \
+            kmod-usb-serial kmod-usb-serial-option kmod-usb-serial-wwan \
+            kmod-usb-serial-qualcomm kmod-usb-acm kmod-usb-printer \
+            kmod-usb-uhci kmod-usb-ohci kmod-usb2 kmod-usb3 \
+            usbutils kmod-fs-exfat kmod-fs-ext4 kmod-fs-ntfs3 \
+            kmod-fs-f2fs e2fsprogs; do
+            echo "CONFIG_PACKAGE_${pkg}=y" >> .config
+          done
+          make defconfig
 
-      - name: Save caches
+      - name: Build
+        working-directory: source
+        run: make -j$(nproc) V=s
+
+      - name: Cache save
         if: always()
         uses: actions/cache/save@v4
         with:
@@ -112,7 +91,7 @@ CONFIG_EOF
             source/staging_dir
           key: build-cache-${{ hashFiles('feeds.conf.default', '.github/workflows/build.yml') }}
 
-      - name: Upload firmware
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
           name: immortalwrt-oray-x1pro
