@@ -42,6 +42,7 @@ jobs:
           ./scripts/feeds update -a
           ./scripts/feeds install luci-app-openclash
           ./scripts/feeds install -p istore luci-app-store
+          ./scripts/feeds install luci-app-ttyd
           ./scripts/feeds install -a
 
       - name: Apply patches
@@ -54,7 +55,7 @@ jobs:
           cp /home/runner/work/immortalwrt-x1pro/immortalwrt-x1pro/filogic.mk target/linux/mediatek/image/
           cp /home/runner/work/immortalwrt-x1pro/immortalwrt-x1pro/feeds.conf.default .
 
-      - name: Configure (ubootmod version)
+      - name: Configure
         working-directory: source
         run: |
           cp defconfig/mt7981-ax3000.config .config
@@ -65,6 +66,7 @@ jobs:
           cat >> .config << 'CONFIG_EOF'
 CONFIG_PACKAGE_luci-app-openclash=y
 CONFIG_PACKAGE_luci-app-store=y
+CONFIG_PACKAGE_luci-app-ttyd=y
 CONFIG_PACKAGE_kmod-usb-storage=y
 CONFIG_PACKAGE_kmod-usb-storage-uas=y
 CONFIG_PACKAGE_kmod-usb-net=y
@@ -113,6 +115,6 @@ CONFIG_EOF
       - name: Upload firmware
         uses: actions/upload-artifact@v4
         with:
-          name: immortalwrt-oray-x1pro-ubootmod
+          name: immortalwrt-oray-x1pro
           path: source/bin/targets/mediatek/filogic/
           retention-days: 30
